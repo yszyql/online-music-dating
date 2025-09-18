@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- mapper为映射的根节点，配置各类声明-->
+<!-- namespace指定Dao接口的完整类名，由于映射文件可能有多个，为了防止crud语句的唯一标识被重复，需要设置空间名称 -->
+<!-- mybatis会依据这个接口动态创建一个实现类去实现这个接口，而这个实现类是一个Mapper对象-->
+
+<mapper namespace="org.x.backend.mapper.OmdMusicMapper">
+
+    <!-- 
+    select：查询的statement（声明），用来编写查询语句
+    id：语句的唯一标识，要与dao层的函数名一致
+    resultType：配置返回的结果集类型
+    parameterType：传递的参数类型，可以省略
+    -->
+
+    <resultMap id="MusicInfoWithSingerMap" type="OmdMusicInfo">
+        <id property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdMusicInfoName" column="omd_music_info_name" />
+        <result property="omdMusicInfoAlbum" column="omd_music_info_album" />
+        <result property="omdMusicInfoDuration" column="omd_music_info_duration" />
+        <result property="omdMusicInfoSongUrl" column="omd_music_info_song_url" />
+        <result property="omdMusicInfoCoverUrl" column="omd_music_info_cover_url" />
+        <result property="omdMusicInfoGenre" column="omd_music_info_genre" />
+        <result property="omdSingerId" column="omd_singer_id" />
+        <result property="omdMusicInfoStatus" column="omd_music_info_status" />
+        <result property="omdMusicInfoCreateTime" column="omd_music_info_create_time" />
+        <result property="omdMusicInfoUpdateTime" column="omd_music_info_update_time" />
+
+        <association property="omdSinger" javaType="OmdSinger">
+            <id property="omdSingerId" column="omd_singer_id" />
+            <result property="omdSingerName" column="omd_singer_name" />
+            <!-- 添加OmdSinger实体类的其他字段映射 -->
+            <result property="omdSingerIntroduction" column="omd_singer_introduction" />
+            <result property="omdSingerRepresentativeSing" column="omd_singer_representative_sing" />
+            <result property="omdSingerGenre" column="omd_singer_genre" />
+            <result property="omdSingerLabel" column="omd_singer_label" />
+            <result property="omdSingerStatus" column="omd_singer_status" />
+            <result property="omdSingerVerifyTime" column="omd_singer_verify_time" />
+            <result property="omdSingerUpdateTime" column="omd_singer_update_time" />
+        </association>
+    </resultMap>
+
+    <select id="getAllMusicInfoList" resultMap="MusicInfoWithSingerMap">
+        SELECT
+        m.*,
+        s.omd_singer_name
+        FROM
+        tb_omd_music_info m
+        LEFT JOIN tb_omd_singer s ON m.omd_singer_id = s.omd_singer_id
+        order by m.omd_music_info_create_time desc
+    </select>
+
+    <select id="getMusicInfoByOmdMusicInfoId" resultMap="MusicInfoWithSingerMap">
+        SELECT
+        m.*,
+        s.omd_singer_name
+        FROM
+        tb_omd_music_info m
+        LEFT JOIN tb_omd_singer s ON m.omd_singer_id = s.omd_singer_id
+        where m.omd_music_info_id = #{omdMusicInfoId}
+    </select>
+
+    <select id="getMusicInfoListByQueryParams" resultMap="MusicInfoWithSingerMap">
+        SELECT
+        m.*,
+        s.omd_singer_name
+        FROM
+        tb_omd_music_info m
+        LEFT JOIN tb_omd_singer s ON m.omd_singer_id = s.omd_singer_id
+        WHERE 1=1
+        <if test="omdMusicInfoName != null and omdMusicInfoName != '' ">
+            and m.omd_music_info_name like concat('%',#{omdMusicInfoName},'%')
+        </if>
+        <if test="omdSingerName != null and omdSingerName != '' ">
+            and m.omd_singer_id in (
+            select omd_singer_id from tb_omd_singer where omd_singer_name like concat('%', #{omdSingerName}, '%')
+            )
+        </if>
+        <if test="omdMusicInfoAlbum != null and omdMusicInfoAlbum != '' ">
+            and m.omd_music_info_album like concat('%',#{omdMusicInfoAlbum},'%')
+        </if>
+        <if test="omdMusicInfoGenre != null and omdMusicInfoGenre != '' ">
+            and m.omd_music_info_genre like concat('%',#{omdMusicInfoGenre},'%')
+        </if>
+        and m.omd_music_info_status = 1
+        order by m.omd_music_info_create_time desc
+    </select>
+
+    <insert id="insertPlaylist" parameterType="OmdPlaylist" useGeneratedKeys="true" keyProperty="omdPlaylistId">
+        INSERT INTO tb_omd_playlist
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            omd_playlist_name,
+            omd_user_id,
+            <if test="omdPlaylistDescription != null">omd_playlist_description,</if>
+            <if test="omdPlaylistCover != null">omd_playlist_cover,</if>
+            <if test="omdPlaylistPublic != null">omd_playlist_public</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            #{omdPlaylistName},
+            #{omdUserId},
+            <if test="omdPlaylistDescription != null">#{omdPlaylistDescription},</if>
+            <if test="omdPlaylistCover != null">#{omdPlaylistCover},</if>
+            <if test="omdPlaylistPublic != null">#{omdPlaylistPublic}</if>
+        </trim>
+    </insert>
+
+    <update id="updatePlaylist" parameterType="OmdPlaylist">
+        update tb_omd_playlist
+        <set>
+            <if test="omdPlaylistName!= null">
+                omd_playlist_name = #{omdPlaylistName},
+            </if>
+            <if test="omdPlaylistDescription!= null">
+                omd_playlist_description = #{omdPlaylistDescription},
+            </if>
+            <if test="omdPlaylistCover!= null">
+                omd_playlist_cover = #{omdPlaylistCover},
+            </if>
+            <if test="omdPlaylistPublic!= null">
+                omd_playlist_public = #{omdPlaylistPublic},
+            </if>
+            omd_playlist_update_time = now()
+        </set>
+        where omd_playlist_id = #{omdPlaylistId}
+    </update>
+    
+    <insert id="insertMusicListToPlaylist" parameterType="java.util.List">
+        insert into tb_omd_playlist_music (omd_playlist_id,omd_music_info_id, omd_playlist_music_order) values
+        <foreach collection="omdPlaylistMusicList" item="item" index="index" separator=",">
+            (#{item.omdPlaylistId},#{item.omdMusicInfoId}, #{item.omdPlaylistMusicOrder})
+        </foreach>
+    </insert>
+
+    <delete id="deleteMusicListFromPlaylist" parameterType="java.util.List">
+        delete from tb_omd_playlist_music where omd_playlist_id = #{omdPlaylistId} and omd_music_info_id in
+        <foreach collection="omdMusicInfoIdList" item="item" index="index" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <select id="selectByOmdMusicInfoIdList" resultType="OmdMusicLikeCache">
+        SELECT *
+        FROM tb_omd_music_like_cache
+        WHERE omd_music_info_id IN
+        <foreach collection="omdMusicInfoIdList" item="omdMusicInfoId" open="(" separator="," close=")">
+            #{omdMusicInfoId}
+        </foreach>
+    </select>
+
+    <select id="selectByUserIdAndMusicIds" resultType="OmdMusicLike">
+        SELECT *
+        FROM tb_omd_music_like
+        WHERE omd_user_id = #{omdUserId}
+        AND omd_music_info_id IN
+        <foreach collection="omdMusicInfoIdList" item="omdMusicInfoId" open="(" separator="," close=")">
+            #{omdMusicInfoId}
+        </foreach>
+    </select>
+
+    <!-- 歌单音乐关联表实体映射 -->
+    <resultMap id="PlaylistMusicMap" type="OmdPlaylistMusic">
+        <id property="omdPlaylistMusicId" column="omd_playlist_music_id" />
+        <result property="omdPlaylistMusicOrder" column="omd_playlist_music_order" />
+        <result property="omdPlaylistId" column="omd_playlist_id" />
+        <result property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdPlaylistMusicCreateTime" column="omd_playlist_music_create_time" />
+
+        <!-- 关联音乐信息 -->
+        <association property="omdMusicInfo" javaType="OmdMusicInfo">
+            <id property="omdMusicInfoId" column="omd_music_info_id" />
+            <result property="omdMusicInfoName" column="omd_music_info_name" />
+            <result property="omdMusicInfoAlbum" column="omd_music_info_album" />
+            <result property="omdMusicInfoDuration" column="omd_music_info_duration" />
+            <result property="omdMusicInfoSongUrl" column="omd_music_info_song_url" />
+            <result property="omdMusicInfoCoverUrl" column="omd_music_info_cover_url" />
+            <result property="omdMusicInfoGenre" column="omd_music_info_genre" />
+            <result property="omdSingerId" column="omd_singer_id" />
+            <result property="omdMusicInfoStatus" column="omd_music_info_status" />
+            <result property="omdMusicInfoCreateTime" column="omd_music_info_create_time" />
+            <result property="omdMusicInfoUpdateTime" column="omd_music_info_update_time" />
+
+            <association property="omdSinger" javaType="OmdSinger">
+                <id property="omdSingerId" column="omd_singer_id" />
+                <result property="omdSingerName" column="omd_singer_name" />
+            </association>
+        </association>
+    </resultMap>
+
+    <select id="getMusicListFromPlaylist" resultMap="PlaylistMusicMap">
+        select
+            m.*,
+            s.omd_singer_id,
+            s.omd_singer_name,
+            pm.omd_playlist_music_order,
+            pm.omd_playlist_id,
+            pm.omd_playlist_music_create_time
+        from
+            tb_omd_music_info m
+                left join tb_omd_playlist_music pm on m.omd_music_info_id = pm.omd_music_info_id
+                left join tb_omd_singer s on m.omd_singer_id = s.omd_singer_id
+        where
+            pm.omd_playlist_id = #{omdPlaylistId}
+        and
+            m.omd_music_info_status = 1
+        order by pm.omd_playlist_music_order asc
+    </select>
+
+    <update id="updateLikeCacheList">
+        UPDATE tb_omd_music_like_cache
+        SET omd_music_like_cache_count = omd_music_like_cache_count + #{delta},
+        omd_music_like_cache_update_time = NOW()
+        WHERE omd_music_info_id IN
+        <foreach collection="omdMusicInfoIdList" item="omdMusicInfoId" open="(" separator="," close=")">
+            #{omdMusicInfoId}
+        </foreach>
+    </update>
+
+    <insert id="insertLikeMusicInfoList">
+        INSERT IGNORE INTO tb_omd_music_like
+        (omd_music_info_id, omd_user_id, omd_music_like_time)
+        VALUES
+        <foreach collection="omdMusicLikeList" item="item" separator=",">
+            (#{item.omdMusicInfoId}, #{item.omdUserId}, NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteLikeMusicInfoList">
+        DELETE FROM tb_omd_music_like
+        WHERE omd_music_info_id IN
+        <foreach collection="omdMusicInfoIdList" item="omdMusicInfoId" open="(" separator="," close=")">
+            #{omdMusicInfoId}
+        </foreach>
+        AND omd_user_id = #{omdUserId}
+    </delete>
+
+</mapper>

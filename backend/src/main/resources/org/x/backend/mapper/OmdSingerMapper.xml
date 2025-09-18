@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- mapper为映射的根节点，配置各类声明-->
+<!-- namespace指定Dao接口的完整类名，由于映射文件可能有多个，为了防止crud语句的唯一标识被重复，需要设置空间名称 -->
+<!-- mybatis会依据这个接口动态创建一个实现类去实现这个接口，而这个实现类是一个Mapper对象-->
+
+<mapper namespace="org.x.backend.mapper.OmdSingerMapper">
+
+    <!-- 
+    select：查询的statement（声明），用来编写查询语句
+    id：语句的唯一标识，要与dao层的函数名一致
+    resultType：配置返回的结果集类型
+    parameterType：传递的参数类型，可以省略
+    -->
+
+    <!--修改用户信息-->
+    <update id="updateSinger" parameterType="OmdSinger">
+        UPDATE tb_omd_singer
+        <set>
+            <if test="omdSingerIntroduction != null">
+                omd_singer_introduction = #{omdSingerIntroduction},
+            </if>
+            <if test="omdSingerRepresentativeSing != null">
+                omd_singer_representative_sing = #{omdSingerRepresentativeSing},
+            </if>
+            <if test="omdSingerGenre != null">
+                omd_singer_genre = #{omdSingerGenre},
+            </if>
+            <if test="omdSingerLabel != null">
+                omd_singer_label = #{omdSingerLabel},
+            </if>
+            omd_singer_update_time = NOW()
+        </set>
+        WHERE omd_singer_id = #{omdSingerId}
+    </update>
+
+    <resultMap id="musicAppealWithSingerId" type="OmdMusicAppeal">
+        <id property="omdMusicAppealId" column="omd_music_appeal_id" />
+        <result property="omdSingerId" column="omd_singer_id" />
+        <result property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdMusicAppealReason" column="omd_music_appeal_reason" />
+        <result property="omdMusicAppealEvidence" column="omd_music_appeal_evidence" />
+        <result property="omdMusicAppealStatus" column="omd_music_appeal_status" />
+        <result property="omdAdminId" column="omd_admin_id" />
+        <result property="omdMusicAppealHandleRemark" column="omd_music_appeal_handle_remark" />
+        <result property="omdMusicAppealCreateTime" column="omd_music_appeal_create_time" />
+        <result property="omdMusicAppealHandleTime" column="omd_music_appeal_handle_time" />
+        <association property="omdAppealMusicInfo" javaType="OmdMusicInfo">
+            <id property="omdMusicInfoId" column="omd_music_info_id" />
+            <result property="omdMusicInfoName" column="omd_music_info_name" />
+            <result property="omdMusicInfoCoverUrl" column="omd_music_info_cover_url" />
+        </association>
+    </resultMap>
+
+    <select id="getMusicAppealListBySingerId" resultMap="musicAppealWithSingerId">
+        select
+            ma.*, m.omd_music_info_name, m.omd_music_info_cover_url
+        FROM
+            tb_omd_music_appeal ma
+                JOIN tb_omd_music_info m ON ma.omd_music_info_id = m.omd_music_info_id
+        WHERE
+            ma.omd_singer_id = #{omdSingerId}
+        and
+            ma.omd_music_appeal_status = #{omdMusicAppealStatus}
+    </select>
+
+    <resultMap id="omdMusicReportWithSingerId" type="OmdMusicReport">
+        <id property="omdMusicReportId" column="omd_music_report_id" />
+        <result property="omdUserId" column="omd_user_id" />
+        <result property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdMusicReportReason" column="omd_music_report_reason" />
+        <result property="omdMusicReportType" column="omd_music_report_type" />
+        <result property="omdMusicReportStatus" column="omd_music_report_status" />
+        <result property="omdMusicReportEvidence" column="omd_music_report_evidence" />
+        <result property="omdAdminId" column="omd_admin_id" />
+        <result property="omdMusicReportHandleRemark" column="omd_music_report_handle_remark" />
+        <result property="omdMusicReportCreateTime" column="omd_music_report_create_time" />
+        <result property="omdMusicReportHandleTime" column="omd_music_report_handle_time" />
+        <association property="omdReportedMusic" javaType="OmdMusicInfo">
+            <id property="omdMusicInfoId" column="omd_music_info_id" />
+            <result property="omdMusicInfoName" column="omd_music_info_name" />
+            <result property="omdMusicInfoCoverUrl" column="omd_music_info_cover_url" />
+            <result property="omdMusicInfoSongUrl" column="omd_music_info_song_url" />
+        </association>
+    </resultMap>
+
+    <select id="getMusicReportListBySingerId" resultMap="omdMusicReportWithSingerId">
+        SELECT
+            tmi.omd_music_info_name,
+            tmi.omd_music_info_song_url,
+            tmi.omd_music_info_cover_url,
+            tmi.omd_singer_id,
+            tmr.*
+        FROM
+            tb_omd_music_info tmi
+                JOIN
+            tb_omd_music_report tmr ON tmi.omd_music_info_id = tmr.omd_music_info_id
+        WHERE
+            tmi.omd_singer_id = #{omdSingerId}
+          AND tmr.omd_music_report_status = 1
+    </select>
+
+
+</mapper>

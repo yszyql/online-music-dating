@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- mapper为映射的根节点，配置各类声明-->
+<!-- namespace指定Dao接口的完整类名，由于映射文件可能有多个，为了防止crud语句的唯一标识被重复，需要设置空间名称 -->
+<!-- mybatis会依据这个接口动态创建一个实现类去实现这个接口，而这个实现类是一个Mapper对象-->
+
+<mapper namespace="org.x.backend.mapper.OmdFriendMapper">
+
+    <!-- 
+    select：查询的statement（声明），用来编写查询语句
+    id：语句的唯一标识，要与dao层的函数名一致
+    resultType：配置返回的结果集类型
+    parameterType：传递的参数类型，可以省略
+    -->
+
+    <resultMap id="friendWithUser" type="OmdFriend">
+        <id property="omdFriendId" column="omd_friend_id"/>
+        <result property="omdUserId" column="omd_user_id"/>
+        <result property="omdFriendUserId" column="omd_friend_user_id"/>
+        <result property="omdFriendStatus" column="omd_friend_status"/>
+        <result property="omdFriendCreateTime" column="omd_friend_create_time"/>
+        <result property="omdFriendUpdateTime" column="omd_friend_update_time"/>
+        <association property="omdFriendUser" javaType="OmdUser">
+            <id property="omdUserId" column="omd_user_id"/>
+            <result property="omdUserName" column="omd_user_name"/>
+            <result property="omdUserNickname" column="omd_user_nickname"/>
+            <result property="omdUserAvatar" column="omd_user_avatar"/>
+            <result property="omdUserStatus" column="omd_user_status"/>
+        </association>
+    </resultMap>
+
+    <select id="getFriendListByOmdUserId" resultMap="friendWithUser">
+        SELECT
+            f.*,
+            u.omd_user_name,
+            u.omd_user_nickname,
+            u.omd_user_avatar,
+            u.omd_user_status
+        FROM
+            tb_omd_friend f
+                JOIN
+            tb_omd_user u ON f.omd_friend_user_id = u.omd_user_id
+        WHERE
+            f.omd_user_id = #{omdUserId}
+          AND f.omd_friend_status = #{omdFriendStatus}
+          and u.omd_user_status = 1
+        ORDER BY
+            f.omd_friend_create_time DESC
+    </select>
+
+    <select id="getFriendApplicationListByOmdUserId" resultMap="friendWithUser">
+        SELECT
+            f.*,
+            u.omd_user_name,
+            u.omd_user_nickname,
+            u.omd_user_avatar
+        FROM
+            tb_omd_friend f
+                JOIN
+            tb_omd_user u ON f.omd_user_id = u.omd_user_id
+        WHERE
+            f.omd_friend_user_id = #{omdUserId}
+          AND f.omd_friend_status = 0
+        ORDER BY
+            f.omd_friend_create_time DESC
+    </select>
+
+</mapper>

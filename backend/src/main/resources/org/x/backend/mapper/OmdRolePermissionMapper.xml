@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- mapper为映射的根节点，配置各类声明-->
+<!-- namespace指定Dao接口的完整类名，由于映射文件可能有多个，为了防止crud语句的唯一标识被重复，需要设置空间名称 -->
+<!-- mybatis会依据这个接口动态创建一个实现类去实现这个接口，而这个实现类是一个Mapper对象-->
+
+<mapper namespace="org.x.backend.mapper.OmdRolePermissionMapper">
+
+    <!-- 
+    select：查询的statement（声明），用来编写查询语句
+    id：语句的唯一标识，要与dao层的函数名一致
+    resultType：配置返回的结果集类型
+    parameterType：传递的参数类型，可以省略
+    -->
+
+    <select id="findPermissionsByRoleCode" parameterType="string" resultType="OmdPermission">
+        <!--
+        这个查询语句是根据角色ID查询角色的权限信息
+        首先，我们需要从role_permissions表中获取角色的权限ID
+        然后，根据权限ID从permissions表中查询权限信息
+        -->
+        SELECT p.* FROM tb_omd_permission p
+                            JOIN tb_omd_role_permission rp ON p.omd_permission_code = rp.omd_permission_code
+        WHERE rp.omd_role_code = #{omdRoleCode}
+    </select>
+
+</mapper>

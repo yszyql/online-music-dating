@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- mapper为映射的根节点，配置各类声明-->
+<!-- namespace指定Dao接口的完整类名，由于映射文件可能有多个，为了防止crud语句的唯一标识被重复，需要设置空间名称 -->
+<!-- mybatis会依据这个接口动态创建一个实现类去实现这个接口，而这个实现类是一个Mapper对象-->
+
+<mapper namespace="org.x.backend.mapper.OmdUserMapper">
+
+    <!-- 
+    select：查询的statement（声明），用来编写查询语句
+    id：语句的唯一标识，要与dao层的函数名一致
+    resultType：配置返回的结果集类型
+    parameterType：传递的参数类型，可以省略
+    -->
+
+    <!--注册-->
+    <insert id="register" parameterType="OmdUser" useGeneratedKeys="true" keyProperty="omdUserId">
+        INSERT INTO tb_omd_user
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            omd_user_name, omd_user_password, omd_user_phone,
+            <if test="omdUserNickname != null">omd_user_nickname,</if>
+            <if test="omdUserGender != null">omd_user_gender,</if>
+            <if test="omdUserRegion != null">omd_user_region,</if>
+            <if test="omdUserBirthday != null">omd_user_birthday,</if>
+            <if test="omdUserEmail != null">omd_user_email,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            #{omdUserName}, #{omdUserPassword}, #{omdUserPhone},
+            <if test="omdUserNickname != null">#{omdUserNickname},</if>
+            <if test="omdUserGender != null">#{omdUserGender},</if>
+            <if test="omdUserRegion != null">#{omdUserRegion},</if>
+            <if test="omdUserBirthday != null">#{omdUserBirthday},</if>
+            <if test="omdUserEmail != null">#{omdUserEmail},</if>
+        </trim>
+    </insert>
+
+
+    <!--修改用户信息-->
+    <update id="updateUserInfo" parameterType="OmdUser">
+        UPDATE tb_omd_user
+        <set>
+            <if test="omdUserNickname != null">
+                omd_user_nickname = #{omdUserNickname},
+            </if>
+            <if test="omdUserGender != null">
+                omd_user_gender = #{omdUserGender},
+            </if>
+            <if test="omdUserRegion != null">
+                omd_user_region = #{omdUserRegion},
+            </if>
+            <if test="omdUserBirthday != null">
+                omd_user_birthday = #{omdUserBirthday},
+            </if>
+            <if test="omdUserEmail != null and omdUserEmail != ''" >
+                omd_user_email = #{omdUserEmail},
+            </if>
+            <if test="omdUserAvatar != null">
+                omd_user_avatar = #{omdUserAvatar},
+            </if>
+            omd_user_update_time = NOW()
+        </set>
+        WHERE omd_user_id = #{omdUserId}
+    </update>
+
+    <!-- 查询歌单的评论信息结果映射定义 -->
+    <resultMap id="MusicCommentMap" type="OmdMusicComment">
+        <id property="omdMusicCommentId" column="omd_music_comment_id" />
+        <result property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdUserId" column="omd_user_id" />
+        <result property="omdMusicCommentContent" column="omd_music_comment_content" />
+        <result property="omdMusicCommentLikeCount" column="omd_music_comment_like_count" />
+        <result property="omdMusicCommentParentId" column="omd_music_comment_parent_id" />
+        <result property="omdMusicCommentReplyCount" column="omd_music_comment_reply_count" />
+        <result property="omdMusicCommentStatus" column="omd_music_comment_status"/>
+        <result property="omdMusicCommentCreateTime" column="omd_music_comment_create_time" />
+        <result property="omdMusicCommentUpdateTime" column="omd_music_comment_update_time" />
+
+        <!-- 关联查询用户信息 -->
+        <association property="omdUser" javaType="OmdUser">
+            <id property="omdUserId" column="omd_user_id" />
+            <result property="omdUserAvatar" column="omd_user_avatar" />
+            <result property="omdUserNickname" column="omd_user_nickname" />
+            <result property="omdUserName" column="omd_user_name" />
+        </association>
+
+        <!-- 子评论集合映射（明确排除代理属性） -->
+        <collection property="omdMusicCommentReplies"
+                    ofType="OmdMusicComment"
+                    select="org.x.backend.mapper.OmdPublicMapper.getChildCommentsByParentId"
+                    column="omd_music_comment_id"
+                    fetchType="lazy" >
+            <constructor>
+                <arg name="omdMusicCommentId" column="omd_music_comment_id" />
+                <arg name="omdMusicCommentContent" column="omd_music_comment_content" />
+                <arg name="omdMusicCommentLikeCount" column="omd_music_comment_like_count" />
+                <arg name="omdMusicCommentParentId" column="omd_music_comment_parent_id" />
+                <arg name="omdMusicCommentReplyCount" column="omd_music_comment_reply_count" />
+                <arg name="omdMusicCommentStatus" column="omd_music_comment_status" />
+                <arg name="omdMusicCommentCreateTime" column="omd_music_comment_create_time" />
+                <arg name="omdMusicCommentUpdateTime" column="omd_music_comment_update_time" />
+                <arg name="omdUser" column="omd_user_id" />
+            </constructor>
+        </collection>
+    </resultMap>
+
+    <select id="findCommentListByOmdMusicInfoIdWithDynamicSort" resultMap="MusicCommentMap">
+        WITH
+        user_comments AS (
+        SELECT omd_music_comment_id
+        FROM tb_omd_music_comment
+        WHERE omd_user_id = #{omdUserId}
+        ),
+        user_liked_comments AS (
+        SELECT omd_music_comment_id
+        FROM tb_omd_comment_like
+        WHERE omd_user_id = #{omdUserId}
+        )
+        SELECT
+        c.*,
+        u.omd_user_avatar,
+        u.omd_user_nickname,
+        u.omd_user_name,
+        EXISTS(SELECT 1 FROM user_comments uc WHERE uc.omd_music_comment_id = c.omd_music_comment_id) AS isOwnComment,
+        EXISTS(SELECT 1 FROM user_liked_comments ulc WHERE ulc.omd_music_comment_id = c.omd_music_comment_id) AS isLikedByUser
+        FROM tb_omd_music_comment c
+                 LEFT JOIN tb_omd_user u ON c.omd_user_id = u.omd_user_id
+        WHERE
+        c.omd_music_info_id = #{omdMusicInfoId}
+        AND c.omd_music_comment_parent_id = 0
+        AND c.omd_music_comment_status = 1
+        ORDER BY
+        isOwnComment DESC,
+        isLikedByUser DESC,
+        c.omd_music_comment_like_count DESC,
+        c.omd_music_comment_create_time DESC
+    </select>
+
+
+    <!--查询用户信息-->
+    <!-- 定义查询用户及其关联角色的结果映射 -->
+    <resultMap id="UserWithRolesResultMap" type="OmdUser">
+        <id property="omdUserId" column="omd_user_id" />
+        <result property="omdUserName" column="omd_user_name" />
+        <result property="omdUserPhone" column="omd_user_phone" />
+        <result property="omdUserNickname" column="omd_user_nickname" />
+        <result property="omdUserEmail" column="omd_user_email" />
+        <result property="omdUserGender" column="omd_user_gender" />
+        <result property="omdUserRegion" column="omd_user_region" />
+        <result property="omdUserBirthday" column="omd_user_birthday" />
+        <result property="omdUserAvatar" column="omd_user_avatar" />
+        <result property="omdUserStatus" column="omd_user_status" />
+        <result property="omdUserCreateTime" column="omd_user_create_time" />
+        <result property="omdUserUpdateTime" column="omd_user_update_time" />
+
+        <!-- 关联查询用户角色中间表记录，映射到 omdUserRoles 集合 -->
+        <collection property="omdUserRole" ofType="OmdUserRole">
+            <result property="omdRoleCode" column="omd_role_code" />
+        </collection>
+
+    </resultMap>
+
+    <!-- 查询用户及其关联角色的 SQL -->
+    <select id="findOmdUserByIdWithRoles" resultMap="UserWithRolesResultMap">
+        SELECT
+            u.*,
+            ur.omd_role_code
+        FROM
+            tb_omd_user u
+                LEFT JOIN
+            tb_omd_user_role ur ON u.omd_user_id = ur.omd_user_id
+        WHERE
+            u.omd_user_id = #{omdUserId}
+    </select>
+
+    <!-- 批量删除评论 -->
+    <delete id="deleteMusicCommentByIdList">
+        DELETE FROM tb_omd_music_comment WHERE omd_music_comment_id IN
+        <foreach collection="commentIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 查询榜单音乐信息结果映射定义 -->
+    <resultMap id="MusicInfoWithSingerMap" type="OmdMusicInfo">
+        <id property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdMusicInfoName" column="omd_music_info_name" />
+        <result property="omdMusicInfoAlbum" column="omd_music_info_album" />
+        <result property="omdMusicInfoDuration" column="omd_music_info_duration" />
+        <result property="omdMusicInfoSongUrl" column="omd_music_info_song_url" />
+        <result property="omdMusicInfoCoverUrl" column="omd_music_info_cover_url" />
+        <result property="omdMusicInfoGenre" column="omd_music_info_genre" />
+        <result property="omdSingerId" column="omd_singer_id" />
+        <result property="omdMusicInfoStatus" column="omd_music_info_status" />
+        <result property="omdMusicInfoCreateTime" column="omd_music_info_create_time" />
+        <result property="omdMusicInfoUpdateTime" column="omd_music_info_update_time" />
+
+        <association property="omdSinger" javaType="OmdSinger">
+            <id property="omdSingerId" column="omd_singer_id" />
+            <result property="omdSingerName" column="omd_singer_name" />
+            <!-- 添加OmdSinger实体类的其他字段映射 -->
+        </association>
+    </resultMap>
+
+    <!-- 查询歌单中的音乐信息 -->
+    <select id="getPlaylistMusicByOmdPlaylistId" resultMap="MusicInfoWithSingerMap">
+        SELECT
+            m.*,
+            s.omd_singer_name
+        FROM
+            tb_omd_playlist_music pm
+                JOIN tb_omd_music_info m ON pm.omd_music_info_id = m.omd_music_info_id
+                LEFT JOIN tb_omd_singer s ON m.omd_singer_id = s.omd_singer_id
+        WHERE
+            pm.omd_playlist_id = #{omdPlaylistId}
+        ORDER BY pm.omd_playlist_music_order ASC
+    </select>
+
+    <!-- 查询是否为本人评论状态 -->
+    <select id="isOwnCommentList" resultType="map">
+        SELECT
+        t.omd_music_comment_id AS omdMusicCommentId,
+        CASE WHEN c.omd_user_id IS NOT NULL THEN true ELSE false END AS isOwn
+        FROM (
+        <!-- 生成传入的评论ID列表 -->
+        <foreach collection="omdMusicCommentIdList" item="omdMusicCommentId" separator="UNION ALL">
+            SELECT #{omdMusicCommentId} AS omd_music_comment_id
+        </foreach>
+        ) t
+        LEFT JOIN tb_omd_music_comment c
+        ON t.omd_music_comment_id = c.omd_music_comment_id
+        AND c.omd_user_id = #{omdUserId}
+    </select>
+
+    <!-- 查询点赞状态 -->
+    <select id="hasLikedMusicCommentList" resultType="map">
+        SELECT
+        t.omd_music_comment_id AS omdMusicCommentId,
+        CASE WHEN l.omd_user_id IS NOT NULL THEN true ELSE false END AS isLiked
+        FROM (
+        <!-- 生成传入的评论ID列表 -->
+        <foreach collection="omdMusicCommentIdList" item="omdMusicCommentId" separator="UNION ALL">
+            SELECT #{omdMusicCommentId} AS omd_music_comment_id
+        </foreach>
+        ) t
+        LEFT JOIN tb_omd_comment_like l
+        ON t.omd_music_comment_id = l.omd_music_comment_id
+        AND l.omd_user_id = #{omdUserId}
+    </select>
+
+    <!-- 查询举报状态 -->
+    <select id="hasReportedMusicCommentList" resultType="map">
+        SELECT
+        t.omd_music_comment_id AS omdMusicCommentId,
+        CASE WHEN r.omd_user_id IS NOT NULL THEN true ELSE false END AS isReported
+        FROM (
+        <!-- 生成传入的评论ID列表 -->
+        <foreach collection="omdMusicCommentIdList" item="omdMusicCommentId" separator="UNION ALL">
+            SELECT #{omdMusicCommentId} AS omd_music_comment_id
+        </foreach>
+        ) t
+        LEFT JOIN tb_omd_comment_report r
+        ON t.omd_music_comment_id = r.omd_music_comment_id
+        AND r.omd_user_id = #{omdUserId}
+    </select>
+
+    <resultMap id="omdPlaylistPublic" type="OmdPlaylist">
+        <id property="omdPlaylistId" column="omd_playlist_id" />
+        <result property="omdPlaylistName" column="omd_playlist_name" />
+        <result property="omdPlaylistCover" column="omd_playlist_cover" />
+        <result property="omdPlaylistDescription" column="omd_playlist_description" />
+        <result property="omdPlaylistPublic" column="omd_playlist_public" />
+        <result property="omdPlaylistCreateTime" column="omd_playlist_create_time" />
+        <result property="omdPlaylistUpdateTime" column="omd_playlist_update_time" />
+
+        <association property="omdUser" javaType="OmdUser">
+            <id property="omdUserId" column="omd_user_id" />
+            <result property="omdUserAvatar" column="omd_user_avatar" />
+            <result property="omdUserNickname" column="omd_user_nickname" />
+            <result property="omdUserName" column="omd_user_name" />
+        </association>
+
+    </resultMap>
+
+    <select id="getPlaylistPublicList" resultMap="omdPlaylistPublic">
+        SELECT
+            p.*, u.omd_user_name, u.omd_user_nickname, u.omd_user_avatar
+        FROM
+            tb_omd_playlist p
+                JOIN tb_omd_user u ON p.omd_user_id = u.omd_user_id
+                -- 排除拉黑关系（当前用户拉黑作者 或 作者拉黑当前用户）
+                LEFT JOIN tb_omd_friend f ON (
+             (p.omd_user_id = f.omd_friend_user_id AND f.omd_user_id = #{omdUserId})  -- 当前用户拉黑作者
+                 OR (p.omd_user_id = f.omd_user_id AND f.omd_friend_user_id = #{omdUserId})  -- 作者拉黑当前用户
+             ) AND f.omd_friend_status = 3
+        WHERE
+            p.omd_playlist_public = 1  -- 公开歌单
+          AND p.omd_user_id != #{omdUserId}  -- 排除自己的歌单
+          AND f.omd_friend_id IS NULL  -- 排除有拉黑关系的歌单
+      -- 随机逻辑：基于“已排除拉黑关系的歌单”生成范围
+          AND p.omd_playlist_id >= (
+            SELECT FLOOR(RAND() * (MAX(temp.id) - MIN(temp.id) + 1) + MIN(temp.id))
+            FROM (
+      -- 子查询范围与主查询一致（排除拉黑关系）
+            SELECT p2.omd_playlist_id AS id
+            FROM tb_omd_playlist p2
+            LEFT JOIN tb_omd_friend f2 ON (
+            (p2.omd_user_id = f2.omd_friend_user_id AND f2.omd_user_id = #{omdUserId})
+           OR (p2.omd_user_id = f2.omd_user_id AND f2.omd_friend_user_id = #{omdUserId})
+            ) AND f2.omd_friend_status = 3
+            WHERE p2.omd_playlist_public = 1
+          AND p2.omd_user_id != #{omdUserId}
+          AND f2.omd_friend_id IS NULL
+            ) AS temp
+            )
+        ORDER BY p.omd_playlist_id ASC
+    </select>
+
+    <resultMap id="commentReport" type="OmdCommentReport">
+        <id property="omdCommentReportId" column="omd_comment_report_id" />
+        <result property="omdUserId" column="omd_user_id" />
+        <result property="omdMusicCommentId" column="omd_music_comment_id" />
+        <result property="omdCommentReportReason" column="omd_comment_report_reason" />
+        <result property="omdCommentReportDescription" column="omd_comment_report_description" />
+        <result property="omdCommentReportStatus" column="omd_comment_report_status" />
+        <result property="omdCommentReportRemark" column="omd_comment_report_remark" />
+        <result property="omdAdminName" column="omd_admin_name" />
+        <result property="omdCommentReportHandleTime" column="omd_comment_report_handle_time" />
+        <result property="omdCommentReportCreateTime" column="omd_comment_report_create_time" />
+        <association property="omdMusicComment" javaType="OmdMusicComment">
+            <id property="omdMusicCommentId" column="omd_music_comment_id" />
+            <result property="omdMusicCommentContent" column="omd_music_comment_content" />
+        </association>
+    </resultMap>
+
+    <select id="getOmdCommentReportList" resultMap="commentReport">
+        select
+            cr.*, mc.omd_music_comment_content
+        from
+            tb_omd_comment_report cr
+                join tb_omd_music_comment mc on cr.omd_music_comment_id = mc.omd_music_comment_id
+        where
+            cr.omd_user_id = #{omdUserId}
+        and
+            cr.omd_comment_report_status = #{omdCommentReportStatus}
+        order by
+            cr.omd_comment_report_create_time desc
+    </select>
+
+    <resultMap id="userReportWithOmdUserInfo" type="OmdUserReport">
+        <id property="omdUserReportId" column="omd_user_report_id" />
+        <result property="omdUserId" column="omd_user_id" />
+        <result property="omdUserReportedUserId" column="omd_user_reported_user_id" />
+        <result property="omdUserReportReason" column="omd_user_report_reason" />
+        <result property="omdUserReportType" column="omd_user_report_type" />
+        <result property="omdUserReportStatus" column="omd_user_report_status" />
+        <result property="omdUserReportEvidence" column="omd_user_report_evidence" />
+        <result property="omdAdminId" column="omd_admin_id" />
+        <result property="omdUserReportHandleRemark" column="omd_user_report_handle_remark" />
+        <result property="omdUserReportCreateTime" column="omd_user_report_create_time" />
+        <result property="omdUserReportHandleTime" column="omd_user_report_handle_time" />
+        <association property="omdReportedUser" javaType="OmdUser">
+            <id property="omdUserId" column="omd_user_id" />
+            <result property="omdUserAvatar" column="omd_user_avatar" />
+            <result property="omdUserNickname" column="omd_user_nickname" />
+            <result property="omdUserName" column="omd_user_name" />
+        </association>
+    </resultMap>
+
+    <select id="getOmdUserReportList" resultMap="userReportWithOmdUserInfo">
+        select
+            ur.*, u.omd_user_avatar, u.omd_user_nickname, u.omd_user_name
+        from
+            tb_omd_user_report ur
+                join tb_omd_user u on ur.omd_user_reported_user_id = u.omd_user_id
+        where
+            ur.omd_user_id = #{omdUserId}
+        and
+            ur.omd_user_report_status = #{omdUserReportStatus}
+        order by
+            ur.omd_user_report_create_time desc
+    </select>
+
+    <resultMap id="musicReportWithOmdMusicInfo" type="OmdMusicReport">
+        <id property="omdMusicReportId" column="omd_music_report_id" />
+        <result property="omdUserId" column="omd_user_id" />
+        <result property="omdMusicInfoId" column="omd_music_info_id" />
+        <result property="omdMusicReportReason" column="omd_music_report_reason" />
+        <result property="omdMusicReportType" column="omd_music_report_type" />
+        <result property="omdMusicReportStatus" column="omd_music_report_status" />
+        <result property="omdMusicReportEvidence" column="omd_music_report_evidence" />
+        <result property="omdAdminId" column="omd_admin_id" />
+        <result property="omdMusicReportHandleRemark" column="omd_music_report_handle_remark" />
+        <result property="omdMusicReportCreateTime" column="omd_music_report_create_time" />
+        <result property="omdMusicReportHandleTime" column="omd_music_report_handle_time" />
+        <association property="omdReportedMusic" javaType="OmdMusicInfo">
+            <id property="omdMusicInfoId" column="omd_music_info_id" />
+            <result property="omdMusicInfoName" column="omd_music_info_name" />
+            <result property="omdMusicInfoCoverUrl" column="omd_music_info_cover_url" />
+        </association>
+    </resultMap>
+
+    <select id="getOmdMusicReportList" resultMap="musicReportWithOmdMusicInfo">
+        select
+            mr.*, m.omd_music_info_name, m.omd_music_info_cover_url
+        from
+            tb_omd_music_report mr
+                join tb_omd_music_info m on mr.omd_music_info_id = m.omd_music_info_id
+        where
+            mr.omd_user_id = #{omdUserId}
+        and
+            mr.omd_music_report_status = #{omdMusicReportStatus}
+        order by
+            mr.omd_music_report_create_time desc
+    </select>
+
+
+</mapper>

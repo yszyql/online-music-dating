@@ -1,0 +1,103 @@
+# 项目名
+spring:
+  # 应用名
+  application:
+    name: backend
+
+  # 静态资源配置
+  web:
+    resources:
+      static-locations: classpath:/static/
+
+  # 配置文件传输大小限制
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
+
+  # 跨域配置
+  cors:
+    allowed-origins: "http://localhost:5173"  # Vue开发服务器端口
+    allowed-methods: "*"
+    allowed-headers: "*"
+    allow-credentials: true
+
+  # 数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/online_music_database?serverTimezone=GMT%2B8
+    username: root
+    password: 123456
+    hikari:
+      maximum-pool-size: 10  # 最大连接数，根据业务调整
+      minimum-idle: 5        # 最小空闲连接数
+      idle-timeout: 60000    # 空闲连接超时时间（毫秒）
+
+  # redis数据库配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+
+  # websocket配置
+  websocket:
+    broker:
+      heartbeat:
+        interval: 30000 # 30秒心跳间隔
+
+# mybatis配置
+mybatis:
+  mapper-locations: classpath:/mapper/*.xml  # Mapper XML位置
+  type-aliases-package: org.x.backend.pojo  # POJO包路径
+  configuration: # 开启驼峰命名规则，即数据库中的字段名和实体类中的字段名不一致时，会自动转换为驼峰命名规则
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 配置日志实现为标准输出
+  global-config: # 表名统一前缀（如所有表以tb_开头）
+    db-config:
+      table-prefix: tb_
+
+# 端口号，还是可以不配置的，默认就是8080
+server:
+  port: 8080
+  # 启动目录，不配置的话，默认就是当前目录
+  servlet:
+    context-path: /
+
+# 日志配置
+logging:
+  file:
+    name: logs/online-music-dating.log  # 日志文件路径和名称
+
+# jwt配置
+jwt:
+  secret: ${TENCENT_SECRET:请在此处填写密钥}  # 密钥，用于生成和验证 JWT
+  expiration: 86400  # 令牌过期时间（秒），默认24小时
+  token-header: Authorization      # 请求头名称
+  token-prefix: Bearer # 令牌前缀
+
+# 腾讯云配置
+tencent:
+  # 密钥
+  cloud:
+    secret-id: ${TENCENT_SECRET_ID:请在此处填写腾讯云SecretID}           #  SecretId
+    secret-key: ${TENCENT_SECRET_KEY:请在此处填写腾讯云SecretKEY}         #  SecretKey
+  # 腾讯云对象存储 COS 配置
+  cos:
+    secret-id: ${TENCENT_SECRET_ID:请在此处填写腾讯云SecretID}           #  SecretId
+    secret-key: ${TENCENT_SECRET_KEY:请在此处填写腾讯云SecretKEY}         #  SecretKey
+    region: ap-guangzhou                 # 区域，如 ap-shanghai
+    bucket-name: ${TENCENT_BUCKET_NAME:请在此处填写腾讯云桶名称}       # 桶名称
+    base-url: ${TENCENT_BASE_URL:请在此处填写腾讯云访问地址}  # 访问地址
+
+  # 腾讯云短信服务 SMS 配置
+  sms:
+    app-id: ${TENCENT_APP_ID:请在此处填写腾讯云AppID}      # 腾讯云短信应用ID
+    app-key: ${TENCENT_APP_ID:请在此处填写腾讯云AppKEY}     # 应用密钥
+    sign-name: 腾讯云     # 短信签名
+    template-id: 449739     # 短信模板ID
+
+  # 腾讯云混元大模型
+  hunyuan:
+    endpoint: hunyuan.tencentcloudapi.com
+    model: hunyuan-turbos-latest
